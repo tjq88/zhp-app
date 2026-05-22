@@ -16,7 +16,7 @@ func Init(workerID uint16) {
 }
 
 // InitFromRedis 先从 Redis 注册 workerId，再用它初始化全局 ID 生成器。
-func InitFromRedis(conf config.RedisConf) (uint16, error) {
+func InitFromRedis(conf config.RedisConfig) (uint16, error) {
 	workerID := regworkerid.RegisterOne(regworkerid.RegisterConf{
 		Address:         conf.Addr,
 		Password:        conf.Password,

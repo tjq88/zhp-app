@@ -29,7 +29,7 @@ func main() {
 	)
 
 	// Redis 同时用于业务访问和雪花算法 workerId 注册。
-	redis, err := common.InitRedis(cfg.RedisConf)
+	redis, err := common.InitRedis(cfg.RedisConfig)
 	if err != nil {
 		slog.Error("init_redis_failed", slog.String("err", err.Error()))
 		return
@@ -38,7 +38,7 @@ func main() {
 	defer redis.Close()
 
 	// 通过 Redis 注册雪花算法 workerId，保证多实例部署时不会冲突。
-	workerID, err := idgenx.InitFromRedis(cfg.RedisConf)
+	workerID, err := idgenx.InitFromRedis(cfg.RedisConfig)
 	if err != nil {
 		slog.Error("id_generator_init_failed", slog.String("err", err.Error()))
 		return
@@ -50,7 +50,7 @@ func main() {
 	)
 
 	// 启动阶段主动校验数据库连通性，尽早失败，避免服务启动后再暴露问题。
-	_, err = common.InitDB(cfg.MySqlDsn)
+	_, err = common.InitDB(cfg.MySQLDSN)
 	if err != nil {
 		slog.Error("init_db_failed", slog.String("err", err.Error()))
 		return

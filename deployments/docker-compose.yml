@@ -1,0 +1,63 @@
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: build/Dockerfile
+    container_name: zhp-app
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      APP_PORT: ":8080"
+      LOG_LEVEL: "info"
+      MYSQL_DSN: "root:root123456@tcp(mysql:3306)/zpxc?charset=utf8mb4&parseTime=True&loc=Local"
+      REDIS_ADDR: "redis:6379"
+      REDIS_PASSWORD: ""
+      REDIS_DB: "0"
+      REDIS_MASTER_NAME: ""
+      REDIS_WORKER_ID_MIN: "0"
+      REDIS_WORKER_ID_MAX: "1023"
+      REDIS_WORKER_ID_LIFE_SECONDS: "15"
+      PWD_KEY: "53b8e2d890c5535a574f8f19eea8ef4451ec0f43e8b0d5a0d616f1da9578d1b4"
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+  mysql:
+    image: mysql:8.4
+    container_name: zhp-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: "root123456"
+      MYSQL_DATABASE: "zpxc"
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ../sql:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-proot123456"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: zhp-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  redis_data:

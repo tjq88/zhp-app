@@ -12,7 +12,7 @@ import (
 var redisClient *redis.Client
 
 // InitRedis 初始化 Redis 客户端并校验连通性。
-func InitRedis(conf config.RedisConf) (*redis.Client, error) {
+func InitRedis(conf config.RedisConfig) (*redis.Client, error) {
 	client := redis.NewClient(&redis.Options{
 		Addr:     conf.Addr,
 		Password: conf.Password,

@@ -6,21 +6,21 @@ import (
 	"strconv"
 )
 
-// AppConf 保存当前进程已加载的运行时配置，供共享访问。
-var AppConf App
+// AppConfig 保存当前进程已加载的运行时配置，供共享访问。
+var AppConfig App
 
 // App 汇总应用进程运行所需的配置项。
 type App struct {
-	Port      string
-	MySqlDsn  string
-	PwdKey    string
-	WorkerID  uint16
-	LogLevel  string
-	RedisConf RedisConf
+	Port        string
+	MySQLDSN    string
+	PasswordKey string
+	WorkerID    uint16
+	LogLevel    string
+	RedisConfig RedisConfig
 }
 
-// RedisConf 同时包含 Redis 连接信息和 workerId 注册区间配置。
-type RedisConf struct {
+// RedisConfig 同时包含 Redis 连接信息和 workerId 注册区间配置。
+type RedisConfig struct {
 	Addr                string
 	Password            string
 	DB                  int
@@ -38,18 +38,18 @@ func Load() (App, error) {
 	}
 
 	cfg := App{
-		Port:     getEnv("APP_PORT", ":8080"),
-		MySqlDsn: getEnv("MYSQL_DSN", "root:root123456@tcp(127.0.0.1:3306)/zpxc?charset=utf8mb4&parseTime=True&loc=Local"),
-		PwdKey:   getEnv("PWD_KEY", "53b8e2d890c5535a574f8f19eea8ef4451ec0f43e8b0d5a0d616f1da9578d1b4"),
-		WorkerID: workerID,
-		LogLevel: getEnv("LOG_LEVEL", "info"),
+		Port:        getEnv("APP_PORT", ":8080"),
+		MySQLDSN:    getEnv("MYSQL_DSN", "root:root123456@tcp(127.0.0.1:3306)/zpxc?charset=utf8mb4&parseTime=True&loc=Local"),
+		PasswordKey: getEnv("PWD_KEY", "53b8e2d890c5535a574f8f19eea8ef4451ec0f43e8b0d5a0d616f1da9578d1b4"),
+		WorkerID:    workerID,
+		LogLevel:    getEnv("LOG_LEVEL", "info"),
 	}
 
 	redisDB, _ := getEnvInt("REDIS_DB", 0)
 	//workerIDMin, _ := getEnvInt32("REDIS_WORKER_ID_MIN", 0)
 	//workerIDMax, _ := getEnvInt32("REDIS_WORKER_ID_MAX", 1023)
 	//workerIDLifeSeconds, _ := getEnvInt32("REDIS_WORKER_ID_LIFE_SECONDS", 15)
-	cfg.RedisConf = RedisConf{
+	cfg.RedisConfig = RedisConfig{
 		Addr:                getEnv("REDIS_ADDR", "127.0.0.1:6379"),
 		Password:            getEnv("REDIS_PASSWORD", ""),
 		DB:                  redisDB,
@@ -59,12 +59,12 @@ func Load() (App, error) {
 		WorkerIDLifeSeconds: 15,
 	}
 
-	// PwdKey 是密码加密必需配置，不能为空。
-	if cfg.PwdKey == "" {
+	// PasswordKey 是密码加密必需配置，不能为空。
+	if cfg.PasswordKey == "" {
 		return App{}, fmt.Errorf("PWD_KEY cannot be empty")
 	}
 
-	AppConf = cfg
+	AppConfig = cfg
 
 	return cfg, nil
 }

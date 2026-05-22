@@ -22,7 +22,7 @@ type MemberService struct {
 func NewMemberService() *MemberService {
 	return &MemberService{
 		db:     common.Db,
-		pwdKey: config.AppConf.PwdKey,
+		pwdKey: config.AppConfig.PasswordKey,
 	}
 }
 

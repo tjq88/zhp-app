@@ -1,0 +1,11 @@
+.git
+.gocache
+.idea
+build
+deployments
+scripts
+test
+web
+api
+doc
+*.log

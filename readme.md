@@ -19,6 +19,8 @@ pkg/logger                       结构化日志初始化
 pkg/utils                        小型通用工具函数
 ```
 
+配置命名规范见：[doc/config-naming.md](/Users/jtq/GolandProjects/zhp/zhp-app/doc/config-naming.md:1)
+
 ## 启动流程
 
 应用当前的启动顺序如下：
@@ -30,6 +32,82 @@ pkg/utils                        小型通用工具函数
 5. 连接 MySQL 并校验可用性
 6. 组装业务服务和 HTTP 路由
 7. 启动 Gin HTTP 服务
+
+## 本地启动
+
+项目已提供启动脚本：
+
+```bash
+./scripts/start.sh
+```
+
+脚本会自动：
+
+1. 切换到项目根目录
+2. 设置项目内 `GOCACHE=.gocache`
+3. 注入默认的 MySQL、Redis、日志级别和端口配置
+4. 执行 `go run ./cmd/app`
+
+如果你需要覆盖默认配置，可以在启动前传入环境变量，例如：
+
+```bash
+APP_PORT=:9090 \
+MYSQL_DSN='root:123456@tcp(127.0.0.1:3306)/zpxc?charset=utf8mb4&parseTime=True&loc=Local' \
+REDIS_ADDR=127.0.0.1:6379 \
+./scripts/start.sh
+```
+
+## VM 部署
+
+保留当前 VM 部署方式，直接在服务器上执行：
+
+```bash
+./scripts/start.sh
+```
+
+如果服务器上的 MySQL、Redis 地址和默认值不同，可以通过环境变量覆盖：
+
+```bash
+APP_PORT=:8080 \
+MYSQL_DSN='root:密码@tcp(127.0.0.1:3306)/zpxc?charset=utf8mb4&parseTime=True&loc=Local' \
+REDIS_ADDR=127.0.0.1:6379 \
+./scripts/start.sh
+```
+
+## Docker 部署
+
+项目已补充 Docker 部署文件：
+
+- `build/Dockerfile`
+- `deployments/docker-compose.yml`
+- `scripts/start-docker.sh`
+- `scripts/stop-docker.sh`
+
+启动方式：
+
+```bash
+./scripts/start-docker.sh
+```
+
+停止方式：
+
+```bash
+./scripts/stop-docker.sh
+```
+
+Docker Compose 默认会启动：
+
+1. `app`：当前 Go 服务
+2. `mysql`：MySQL 8.4
+3. `redis`：Redis 7.2
+
+默认暴露端口：
+
+- `8080`：应用服务
+- `3306`：MySQL
+- `6379`：Redis
+
+如果你只想容器化 `app`，而 MySQL / Redis 使用外部服务，可以直接修改 [deployments/docker-compose.yml](/Users/jtq/GolandProjects/zhp/zhp-app/deployments/docker-compose.yml:1) 中 `app.environment` 里的 `MYSQL_DSN` 和 `REDIS_ADDR`，并删除 `mysql`、`redis` 两个服务定义。
 
 ## 注册链路说明
 

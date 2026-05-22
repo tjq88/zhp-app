@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"time"
 	"zhp-app/internal/model"
+	"zhp-app/pkg/common"
+	"zhp-app/pkg/config"
 	"zhp-app/pkg/utils"
 
 	"github.com/yitter/idgenerator-go/idgen"
@@ -16,13 +18,16 @@ type MemberService struct {
 	pwdKey string
 }
 
-func NewMemberService(db *gorm.DB, pwdKey string) *MemberService {
+// NewMemberService 基于共享基础设施状态创建会员领域服务。
+func NewMemberService() *MemberService {
 	return &MemberService{
-		db:     db,
-		pwdKey: pwdKey,
+		db:     common.Db,
+		pwdKey: config.AppConf.PwdKey,
 	}
 }
 
+// Register 执行会员注册业务流程：
+// 校验依赖、组装持久化模型、加密密码并落库。
 func (s *MemberService) Register(register *model.Register) (*model.MemberInfo, error) {
 	if register == nil {
 		return nil, fmt.Errorf("register payload is nil")
@@ -32,6 +37,7 @@ func (s *MemberService) Register(register *model.Register) (*model.MemberInfo, e
 		return nil, fmt.Errorf("database is not initialized")
 	}
 
+	// 统一使用同一个时间戳，避免审计字段和登录时间出现细小偏差。
 	now := time.Now()
 	member := &model.MemberInfo{
 		Username: register.Username,
@@ -49,6 +55,7 @@ func (s *MemberService) Register(register *model.Register) (*model.MemberInfo, e
 		LastLoginTime: now,
 	}
 
+	// 记录脱敏后的副本，避免原始密码摘要离开 service 边界。
 	logMember := *member
 	logMember.Password = maskPassword(logMember.Password)
 	slog.Info("member_register_member_built",
@@ -74,6 +81,7 @@ func (s *MemberService) Register(register *model.Register) (*model.MemberInfo, e
 	return member, nil
 }
 
+// maskPassword 用于避免敏感密码内容写入日志。
 func maskPassword(password string) string {
 	if password == "" {
 		return ""

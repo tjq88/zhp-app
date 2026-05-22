@@ -9,11 +9,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// RequestLogger 在请求处理完成后输出一条结构化访问日志。
 func RequestLogger() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
 		c.Next()
 
+		// 未命中路由时 FullPath 为空，这里回退到原始请求路径。
 		path := c.FullPath()
 		if path == "" {
 			path = c.Request.URL.Path
@@ -35,6 +37,7 @@ func RequestLogger() gin.HandlerFunc {
 			attrs = append(attrs, slog.String("errors", collectErrors(c)))
 		}
 
+		// 4xx 和 5xx 提升为 warn/error，方便快速定位异常请求。
 		switch {
 		case c.Writer.Status() >= 500:
 			slog.Error("http_request", attrs...)
@@ -46,6 +49,7 @@ func RequestLogger() gin.HandlerFunc {
 	}
 }
 
+// collectErrors 把 Gin 内部错误列表压平成一段便于写日志的字符串。
 func collectErrors(c *gin.Context) string {
 	errors := make([]string, 0, len(c.Errors))
 	for _, item := range c.Errors {

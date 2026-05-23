@@ -3,6 +3,7 @@ package handler
 import (
 	"log/slog"
 	"net/http"
+	"strconv"
 	"zhp-app/internal/model"
 	"zhp-app/internal/service"
 	"zhp-app/pkg/common"
@@ -58,4 +59,20 @@ func (h *MemberHandler) Register(c *gin.Context) {
 
 	// 不直接返回持久化模型，避免把敏感字段暴露给调用方。
 	success(c, model.NewMemberView(member))
+}
+
+func (h *MemberHandler) Login(c *gin.Context) {
+	var login model.Login
+	if err := c.ShouldBindJSON(&login); err != nil {
+		slog.Error("login_bind_failed", slog.String("err", err.Error()))
+		fail(c, http.StatusBadRequest, "1", "invalid request")
+		return
+	}
+	login.TenantCode = c.GetString(common.TenantCode)
+	memberInfo, i := h.memberService.Login(&login)
+	if memberInfo == nil {
+		fail(c, http.StatusInternalServerError, strconv.Itoa(i), "login failed")
+		return
+	}
+	success(c, model.NewMemberView(memberInfo))
 }

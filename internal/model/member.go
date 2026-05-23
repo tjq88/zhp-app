@@ -1,6 +1,7 @@
 package model
 
 import (
+	"log/slog"
 	"time"
 
 	"gorm.io/gorm"
@@ -22,6 +23,11 @@ type Register struct {
 	TenantCode       string `json:"tenantCode"`
 }
 
+// Login 描述注册接口的请求体。
+type Login struct {
+	Register
+}
+
 // TableName 指定模型对应的数据库表名。
 func (m MemberInfo) TableName() string {
 	return "zp_member_info"
@@ -30,4 +36,26 @@ func (m MemberInfo) TableName() string {
 // CreateMember 使用给定的 GORM 连接写入会员记录。
 func CreateMember(db *gorm.DB, member *MemberInfo) error {
 	return db.Create(member).Error
+}
+
+// SelectByUsername 根据用户名查询
+func SelectByUsername(db *gorm.DB, username string, tenantCode string) *MemberInfo {
+	var member MemberInfo
+	db.Where("username = ?", username).Where("tenant_code = ?", tenantCode).First(&member)
+
+	if member.Username != "" {
+		logMember := NewMemberView(&member)
+		slog.Info("根据用户名查询用户返回数据 参数",
+			slog.String("username", username),
+			slog.String("tenantCode", tenantCode),
+			slog.Any("member", logMember),
+		)
+		return &member
+	}
+	slog.Info("根据用户名查询用户不存在 参数",
+		slog.String("username", username),
+		slog.String("tenantCode", tenantCode),
+	)
+
+	return nil
 }

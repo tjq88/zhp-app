@@ -101,11 +101,17 @@ Docker Compose 默认会启动：
 2. `mysql`：MySQL 8.4
 3. `redis`：Redis 7.2
 
+当前默认内存上限：
+
+- `app`：`512m`
+- `mysql`：`1g`
+- `redis`：`256m`
+
 默认暴露端口：
 
 - `8080`：应用服务
-- `3306`：MySQL
-- `6379`：Redis
+- `3305`：MySQL
+- `6479`：Redis
 
 如果你只想容器化 `app`，而 MySQL / Redis 使用外部服务，可以直接修改 [deployments/docker-compose.yml](/Users/jtq/GolandProjects/zhp/zhp-app/deployments/docker-compose.yml:1) 中 `app.environment` 里的 `MYSQL_DSN` 和 `REDIS_ADDR`，并删除 `mysql`、`redis` 两个服务定义。
 

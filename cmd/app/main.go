@@ -3,7 +3,6 @@ package main
 import (
 	"log/slog"
 	"zhp-app/internal/app"
-	"zhp-app/internal/service"
 	"zhp-app/pkg/common"
 	"zhp-app/pkg/config"
 	"zhp-app/pkg/idgenx"
@@ -58,8 +57,7 @@ func main() {
 	slog.Info("db_initialized")
 
 	// 基础设施就绪后再组装业务服务和 HTTP 路由。
-	memberService := service.NewMemberService()
-	router := app.NewRouter(memberService)
+	router := app.NewRouter()
 
 	slog.Info("server_starting", slog.String("port", cfg.Port))
 	if err := router.Run(cfg.Port); err != nil {

@@ -10,7 +10,10 @@ import (
 )
 
 // NewRouter 创建 Gin 引擎，并注册全局中间件和业务路由。
-func NewRouter(memberService *service.MemberService) *gin.Engine {
+func NewRouter() *gin.Engine {
+	// 服务
+	memberService := service.NewMemberService()
+
 	router := gin.New()
 	router.Use(gin.Recovery())
 	router.Use(middleware.RequestLogger(), middleware.JwtMiddleWare())
@@ -23,6 +26,7 @@ func NewRouter(memberService *service.MemberService) *gin.Engine {
 
 	// 会员注册接口。
 	router.POST("app-api/member/register", memberHandler.Register)
+	router.POST("app-api/member/login", memberHandler.Login)
 
 	return router
 }

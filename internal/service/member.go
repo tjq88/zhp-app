@@ -81,6 +81,26 @@ func (s *MemberService) Register(register *model.Register) (*model.MemberInfo, e
 	return member, nil
 }
 
+func (s *MemberService) Login(m *model.Login) (*model.MemberInfo, int) {
+	memberInfo := model.SelectByUsername(s.db, m.Username, m.TenantCode)
+	if memberInfo == nil {
+		slog.Info("会员不存在",
+			slog.String("username", m.Username),
+			slog.String("tenantCode", m.TenantCode),
+		)
+		return nil, 1
+	}
+	password := utils.HmacMd5(s.pwdKey, m.Username+m.Password)
+	if memberInfo.Password != password {
+		slog.Info("会员密码错误",
+			slog.String("username", m.Username),
+			slog.String("tenantCode", m.TenantCode),
+		)
+		return nil, 1
+	}
+	return memberInfo, 200
+}
+
 // maskPassword 用于避免敏感密码内容写入日志。
 func maskPassword(password string) string {
 	if password == "" {

@@ -1,9 +1,9 @@
 package handler
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
-	"strconv"
 	"zhp-app/internal/model"
 	"zhp-app/internal/service"
 	"zhp-app/pkg/common"
@@ -61,6 +61,8 @@ func (h *MemberHandler) Register(c *gin.Context) {
 	success(c, model.NewMemberView(member))
 }
 
+// Login 处理会员登录请求：
+// 绑定入参、补充上下文、调用 service，并把业务错误映射为稳定响应。
 func (h *MemberHandler) Login(c *gin.Context) {
 	var login model.Login
 	if err := c.ShouldBindJSON(&login); err != nil {
@@ -68,11 +70,30 @@ func (h *MemberHandler) Login(c *gin.Context) {
 		fail(c, http.StatusBadRequest, "1", "invalid request")
 		return
 	}
+
 	login.TenantCode = c.GetString(common.TenantCode)
-	memberInfo, i := h.memberService.Login(&login)
-	if memberInfo == nil {
-		fail(c, http.StatusInternalServerError, strconv.Itoa(i), "login failed")
+	slog.Info("member_login_requested",
+		slog.String("username", login.Username),
+		slog.String("tenantCode", login.TenantCode),
+	)
+
+	memberInfo, err := h.memberService.Login(&login)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrMemberNotFound):
+			fail(c, http.StatusUnauthorized, "1001", "member not found")
+		case errors.Is(err, service.ErrInvalidPassword):
+			fail(c, http.StatusUnauthorized, "1002", "invalid password")
+		default:
+			slog.Error("member_login_failed",
+				slog.String("username", login.Username),
+				slog.String("tenantCode", login.TenantCode),
+				slog.String("err", err.Error()),
+			)
+			fail(c, http.StatusInternalServerError, "1", "login failed")
+		}
 		return
 	}
+
 	success(c, model.NewMemberView(memberInfo))
 }

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -17,6 +18,13 @@ type MemberService struct {
 	db     *gorm.DB
 	pwdKey string
 }
+
+var (
+	// ErrMemberNotFound 表示会员不存在。
+	ErrMemberNotFound = errors.New("member not found")
+	// ErrInvalidPassword 表示登录密码不正确。
+	ErrInvalidPassword = errors.New("invalid password")
+)
 
 // NewMemberService 基于共享基础设施状态创建会员领域服务。
 func NewMemberService() *MemberService {
@@ -81,24 +89,50 @@ func (s *MemberService) Register(register *model.Register) (*model.MemberInfo, e
 	return member, nil
 }
 
-func (s *MemberService) Login(m *model.Login) (*model.MemberInfo, int) {
-	memberInfo := model.SelectByUsername(s.db, m.Username, m.TenantCode)
+// Login 执行会员登录校验流程。
+func (s *MemberService) Login(login *model.Login) (*model.MemberInfo, error) {
+	if login == nil {
+		return nil, fmt.Errorf("login payload is nil")
+	}
+
+	if s.db == nil {
+		return nil, fmt.Errorf("database is not initialized")
+	}
+
+	memberInfo, err := model.FindMemberByUsername(s.db, login.Username, login.TenantCode)
+	if err != nil {
+		slog.Error("member_login_query_failed",
+			slog.String("username", login.Username),
+			slog.String("tenantCode", login.TenantCode),
+			slog.String("err", err.Error()),
+		)
+		return nil, err
+	}
+
 	if memberInfo == nil {
-		slog.Info("会员不存在",
-			slog.String("username", m.Username),
-			slog.String("tenantCode", m.TenantCode),
+		slog.Warn("member_login_member_not_found",
+			slog.String("username", login.Username),
+			slog.String("tenantCode", login.TenantCode),
 		)
-		return nil, 1
+		return nil, ErrMemberNotFound
 	}
-	password := utils.HmacMd5(s.pwdKey, m.Username+m.Password)
+
+	password := utils.HmacMd5(s.pwdKey, login.Username+login.Password)
 	if memberInfo.Password != password {
-		slog.Info("会员密码错误",
-			slog.String("username", m.Username),
-			slog.String("tenantCode", m.TenantCode),
+		slog.Warn("member_login_invalid_password",
+			slog.String("username", login.Username),
+			slog.String("tenantCode", login.TenantCode),
 		)
-		return nil, 1
+		return nil, ErrInvalidPassword
 	}
-	return memberInfo, 200
+
+	slog.Info("member_login_succeeded",
+		slog.Int64("memberID", memberInfo.Id),
+		slog.String("username", memberInfo.Username),
+		slog.String("tenantCode", memberInfo.TenantCode),
+	)
+
+	return memberInfo, nil
 }
 
 // maskPassword 用于避免敏感密码内容写入日志。

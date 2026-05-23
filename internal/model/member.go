@@ -1,7 +1,6 @@
 package model
 
 import (
-	"log/slog"
 	"time"
 
 	"gorm.io/gorm"
@@ -23,7 +22,7 @@ type Register struct {
 	TenantCode       string `json:"tenantCode"`
 }
 
-// Login 描述注册接口的请求体。
+// Login 描述登录接口的请求体。
 type Login struct {
 	Register
 }
@@ -38,24 +37,19 @@ func CreateMember(db *gorm.DB, member *MemberInfo) error {
 	return db.Create(member).Error
 }
 
-// SelectByUsername 根据用户名查询
-func SelectByUsername(db *gorm.DB, username string, tenantCode string) *MemberInfo {
+// FindMemberByUsername 根据用户名和租户编号查询会员。
+// 未查询到记录时返回 (nil, nil)。
+func FindMemberByUsername(db *gorm.DB, username string, tenantCode string) (*MemberInfo, error) {
 	var member MemberInfo
-	db.Where("username = ?", username).Where("tenant_code = ?", tenantCode).First(&member)
-
-	if member.Username != "" {
-		logMember := NewMemberView(&member)
-		slog.Info("根据用户名查询用户返回数据 参数",
-			slog.String("username", username),
-			slog.String("tenantCode", tenantCode),
-			slog.Any("member", logMember),
-		)
-		return &member
+	err := db.Where("username = ?", username).
+		Where("tenant_code = ?", tenantCode).
+		First(&member).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, err
 	}
-	slog.Info("根据用户名查询用户不存在 参数",
-		slog.String("username", username),
-		slog.String("tenantCode", tenantCode),
-	)
 
-	return nil
+	return &member, nil
 }

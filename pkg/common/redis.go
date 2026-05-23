@@ -9,7 +9,7 @@ import (
 )
 
 // redisClient 保存当前进程共享使用的 Redis 客户端。
-var redisClient *redis.Client
+var RedisClient *redis.Client
 
 // InitRedis 初始化 Redis 客户端并校验连通性。
 func InitRedis(conf config.RedisConfig) (*redis.Client, error) {
@@ -24,7 +24,7 @@ func InitRedis(conf config.RedisConfig) (*redis.Client, error) {
 	}
 	slog.Info("redis_connected")
 
-	redisClient = client
+	RedisClient = client
 
 	return client, nil
 }

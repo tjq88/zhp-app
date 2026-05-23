@@ -13,11 +13,13 @@ import (
 func NewRouter() *gin.Engine {
 	// 服务
 	memberService := service.NewMemberService()
+	platformService := service.NewGamePlatformService()
 
 	router := gin.New()
 	router.Use(gin.Recovery())
 	router.Use(middleware.RequestLogger(), middleware.JwtMiddleWare())
 	memberHandler := handler.NewMemberHandler(memberService)
+	gameHandler := handler.NewGameHandler(platformService)
 
 	// 健康检查保持简单，方便容器编排系统做存活探测。
 	router.GET("/health", func(c *gin.Context) {
@@ -26,7 +28,10 @@ func NewRouter() *gin.Engine {
 
 	// 会员注册接口。
 	router.POST("app-api/member/register", memberHandler.Register)
+	// 会员登陆接口
 	router.POST("app-api/member/login", memberHandler.Login)
+	// 游戏开始
+	router.POST("app-api/game/startGame", gameHandler.StartGame)
 
 	return router
 }

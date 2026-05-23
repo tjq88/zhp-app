@@ -2,7 +2,6 @@ package service
 
 import (
 	"errors"
-	"fmt"
 	"log/slog"
 	"time"
 	"zhp-app/internal/model"
@@ -37,14 +36,6 @@ func NewMemberService() *MemberService {
 // Register 执行会员注册业务流程：
 // 校验依赖、组装持久化模型、加密密码并落库。
 func (s *MemberService) Register(register *model.Register) (*model.MemberInfo, error) {
-	if register == nil {
-		return nil, fmt.Errorf("register payload is nil")
-	}
-
-	if s.db == nil {
-		return nil, fmt.Errorf("database is not initialized")
-	}
-
 	// 统一使用同一个时间戳，避免审计字段和登录时间出现细小偏差。
 	now := time.Now()
 	member := &model.MemberInfo{
@@ -91,14 +82,6 @@ func (s *MemberService) Register(register *model.Register) (*model.MemberInfo, e
 
 // Login 执行会员登录校验流程。
 func (s *MemberService) Login(login *model.Login) (*model.MemberInfo, error) {
-	if login == nil {
-		return nil, fmt.Errorf("login payload is nil")
-	}
-
-	if s.db == nil {
-		return nil, fmt.Errorf("database is not initialized")
-	}
-
 	memberInfo, err := model.FindMemberByUsername(s.db, login.Username, login.TenantCode)
 	if err != nil {
 		slog.Error("member_login_query_failed",

@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -33,25 +34,23 @@ func (GamePlatform) TableName() string {
 	return "zp_game_platform"
 }
 
-// FindPlatformByCodeAndType 根据平台编码、游戏类型和租户查询平台配置。
-func FindPlatformByCodeAndType(db *gorm.DB, code string, gameType int8, tenantCode string) (*GamePlatform, error) {
-	var gamePlatform GamePlatform
-	err := db.Where("code = ?", code).
-		Where("game_type = ?", gameType).
-		Where("tenant_code = ?", tenantCode).
-		First(&gamePlatform).Error
+// FindPlatformCacheByCodeAndType 根据平台编码、游戏类型和租户查询平台配置。
+func FindPlatformCacheByCodeAndType(db *gorm.DB, code string, gameType int8, tenantCode string) (*GamePlatform, error) {
+	gamePlatforms, err := FindPlatformCacheAll(db, tenantCode)
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, nil
-		}
 		return nil, err
 	}
-	return &gamePlatform, nil
+	for _, gamePlatform := range gamePlatforms {
+		if strings.EqualFold(gamePlatform.Code, code) && gamePlatform.GameType == gameType {
+			return gamePlatform, nil
+		}
+	}
+	return nil, gorm.ErrRecordNotFound
 }
 
-// FindPlatformAll 查询某个租户下的全部游戏平台配置。
+// FindPlatformCacheAll 查询某个租户下的全部游戏平台配置。
 // 这里优先读取 Redis 缓存，缓存未命中时回源 MySQL。
-func FindPlatformAll(db *gorm.DB, tenantCode string) ([]*GamePlatform, error) {
+func FindPlatformCacheAll(db *gorm.DB, tenantCode string) ([]*GamePlatform, error) {
 	var cachedPlatforms []*GamePlatform
 	redisKey := "Game:GamePlatform:" + tenantCode + ":all"
 	cached, _ := common.RedisClient.Get(context.Background(), redisKey).Result()

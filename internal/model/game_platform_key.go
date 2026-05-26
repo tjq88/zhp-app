@@ -21,8 +21,8 @@ func (GamePlatformKey) TableName() string {
 	return "zp_game_platform_key"
 }
 
-func FindPlatformKeyById(db *gorm.DB, tenantCode string, id int64) (*GamePlatformKey, error) {
-	gamePlatformKeys, err := FindPlatformKeyAll(db, tenantCode)
+func FindPlatformKeyCacheById(db *gorm.DB, tenantCode string, id int64) (*GamePlatformKey, error) {
+	gamePlatformKeys, err := FindPlatformKeyCacheAll(db, tenantCode)
 	if err != nil {
 		return nil, err
 	}
@@ -34,8 +34,8 @@ func FindPlatformKeyById(db *gorm.DB, tenantCode string, id int64) (*GamePlatfor
 	return nil, gorm.ErrRecordNotFound
 }
 
-func FindPlatformKeyByCode(db *gorm.DB, tenantCode string, code string) (*GamePlatformKey, error) {
-	gamePlatformKeys, err := FindPlatformKeyAll(db, tenantCode)
+func FindPlatformKeyCacheByCode(db *gorm.DB, tenantCode string, code string) (*GamePlatformKey, error) {
+	gamePlatformKeys, err := FindPlatformKeyCacheAll(db, tenantCode)
 	if err != nil {
 		return nil, err
 	}
@@ -47,9 +47,9 @@ func FindPlatformKeyByCode(db *gorm.DB, tenantCode string, code string) (*GamePl
 	return nil, gorm.ErrRecordNotFound
 }
 
-func FindPlatformKeyAll(db *gorm.DB, tenantCode string) ([]*GamePlatformKey, error) {
+func FindPlatformKeyCacheAll(db *gorm.DB, tenantCode string) ([]*GamePlatformKey, error) {
 	var cachePlatformKeys []*GamePlatformKey
-	redisKey := "Game:GamePlatform:" + tenantCode + ":all"
+	redisKey := "Game:GamePlatformKey:" + tenantCode + ":all"
 	cached, _ := common.RedisClient.Get(context.Background(), redisKey).Result()
 	if cached != "" {
 		if err := json.Unmarshal([]byte(cached), &cachePlatformKeys); err == nil && len(cachePlatformKeys) > 0 {

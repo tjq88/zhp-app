@@ -54,6 +54,14 @@ func (h *GameHandler) StartGame(c *gin.Context) {
 			fail(c, http.StatusForbidden, "2002", "game platform disabled")
 		case errors.Is(err, service.ErrGamePlatformMaintaining):
 			fail(c, http.StatusForbidden, "2003", "game platform maintaining")
+		case errors.Is(err, service.ErrGameElectronicNotFound):
+			fail(c, http.StatusNotFound, "2004", "game electronic not found")
+		case errors.Is(err, service.ErrGameElectronicDisabled):
+			fail(c, http.StatusForbidden, "2005", "game electronic disabled")
+		case errors.Is(err, service.ErrGameElectronicMaintaining):
+			fail(c, http.StatusForbidden, "2006", "game electronic maintaining")
+		case errors.Is(err, service.ErrGamePlatformKeyNotFound):
+			fail(c, http.StatusNotFound, "2007", "game platform key not found")
 		default:
 			slog.Error("game_start_failed",
 				slog.String("platformCode", gameStartReq.PlatformCode),

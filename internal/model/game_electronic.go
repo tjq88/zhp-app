@@ -3,6 +3,7 @@ package model
 import (
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"gorm.io/gorm"
 )
@@ -26,9 +27,15 @@ type GameElectronic struct {
 }
 
 var (
-	electronicTenantMap map[string][]*GameElectronic
-	electronicCacheMu   sync.RWMutex
+	electronicCacheHolderValue atomic.Pointer[electronicCacheHolder]
+	electronicCacheResetMu     sync.Mutex
 )
+
+type electronicCacheHolder struct {
+	once      sync.Once
+	tenantMap map[string][]*GameElectronic
+	err       error
+}
 
 func (GameElectronic) TableName() string {
 	return "zp_game_electronic"
@@ -66,30 +73,63 @@ func FindElectronicById(db *gorm.DB, tenantCode string, id int64) (*GameElectron
 }
 
 func FindElectronicAll(db *gorm.DB) (map[string][]*GameElectronic, error) {
+	holder := getElectronicCacheHolder()
+	holder.once.Do(func() {
+		var gameElectronics []GameElectronic
+		holder.err = db.Find(&gameElectronics).Error
+		if holder.err != nil {
+			return
+		}
 
-	var gameElectronics []GameElectronic
-	err := db.Find(&gameElectronics).Error
-	if err != nil {
-		return nil, err
-	}
+		tenantMap := make(map[string][]*GameElectronic)
+		for i := range gameElectronics {
+			gameElectronic := &gameElectronics[i]
+			tenantKey := normalizeTenantCode(gameElectronic.TenantCode)
+			tenantMap[tenantKey] = append(tenantMap[tenantKey], gameElectronic)
+		}
+		holder.tenantMap = tenantMap
+	})
 
-	tenantMap := make(map[string][]*GameElectronic)
-
-	for i := range gameElectronics {
-		gameElectronic := &gameElectronics[i]
-		tenantMap[gameElectronic.TenantCode] = append(tenantMap[gameElectronic.TenantCode], gameElectronic)
-	}
-
-	electronicCacheMu.Lock()
-	electronicTenantMap = tenantMap
-	electronicCacheMu.Unlock()
-
-	return electronicTenantMap, nil
+	return holder.tenantMap, holder.err
 }
 
 func findByTenant(db *gorm.DB, tenantCode string) ([]*GameElectronic, error) {
 	if _, err := FindElectronicAll(db); err != nil {
 		return nil, err
 	}
-	return electronicTenantMap[tenantCode], nil
+
+	holder := getElectronicCacheHolder()
+	return holder.tenantMap[normalizeTenantCode(tenantCode)], nil
+}
+
+// ClearElectronicCache 清空电子游进程内缓存，供后台刷新后重新加载使用。
+func ClearElectronicCache() {
+	electronicCacheResetMu.Lock()
+	defer electronicCacheResetMu.Unlock()
+
+	electronicCacheHolderValue.Store(&electronicCacheHolder{})
+}
+
+// ReloadElectronicCache 清空电子游进程内缓存并立即重新从数据库加载。
+func ReloadElectronicCache(db *gorm.DB) (map[string][]*GameElectronic, error) {
+	ClearElectronicCache()
+	return FindElectronicAll(db)
+}
+
+func normalizeTenantCode(tenantCode string) string {
+	return strings.ToLower(tenantCode)
+}
+
+func getElectronicCacheHolder() *electronicCacheHolder {
+	holder := electronicCacheHolderValue.Load()
+	if holder != nil {
+		return holder
+	}
+
+	newHolder := &electronicCacheHolder{}
+	if electronicCacheHolderValue.CompareAndSwap(nil, newHolder) {
+		return newHolder
+	}
+
+	return electronicCacheHolderValue.Load()
 }

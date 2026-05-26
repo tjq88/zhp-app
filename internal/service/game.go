@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+
 	"gorm.io/gorm"
 	"zhp-app/internal/model"
 	"zhp-app/pkg/common"
@@ -33,47 +34,24 @@ func NewGamePlatformService() *GamePlatformService {
 }
 
 // StartGame 执行开始游戏前的平台查找和状态校验。
+// 平台配置和平台密钥优先走 Redis 缓存，电子游优先走进程内缓存。
 func (s *GamePlatformService) StartGame(req *model.GameStartReq) (*model.GameStartResp, error) {
-	//gamePlatform
-	gamePlatform, err := s.FindPlatformByCodeAndType(req)
+	gamePlatform, err := s.loadAvailablePlatform(req)
 	if err != nil {
 		return nil, err
-	}
-	if gamePlatform == nil {
-		return nil, ErrGamePlatformNotFound
-	}
-	if !gamePlatform.Enable {
-		return nil, ErrGamePlatformDisabled
-	}
-	if gamePlatform.Maintain {
-		return nil, ErrGamePlatformMaintaining
 	}
 
-	//electronic
-	gameElectronic, err := model.FindElectronicById(s.db, req.TenantCode, req.GameId)
+	gameElectronic, err := s.loadAvailableElectronic(req)
 	if err != nil {
 		return nil, err
 	}
-	if gameElectronic == nil {
-		return nil, ErrGameElectronicNotFound
-	}
-	if gameElectronic.Enable {
-		return nil, ErrGameElectronicDisabled
-	}
-	if gameElectronic.Maintain {
-		return nil, ErrGameElectronicMaintaining
-	}
-	//
-	gamePlatformKey, err := model.FindPlatformKeyById(s.db, req.TenantCode, gamePlatform.KeyId)
+
+	gamePlatformKey, err := s.loadPlatformKey(req.TenantCode, gamePlatform.KeyId)
 	if err != nil {
 		return nil, err
 	}
-	if gamePlatformKey == nil {
-		return nil, ErrGamePlatformKeyNotFound
-	}
-	req.Electronic = gameElectronic
-	req.Platform = gamePlatform
-	req.PlatformKey = gamePlatformKey
+
+	s.attachGameContext(req, gamePlatform, gameElectronic, gamePlatformKey)
 
 	resp := model.NewGameStartResp(gamePlatform, req)
 	return &resp, nil
@@ -81,24 +59,71 @@ func (s *GamePlatformService) StartGame(req *model.GameStartReq) (*model.GameSta
 
 // FindPlatformByCodeAndType 按租户、平台编码和游戏类型查找游戏平台。
 func (s *GamePlatformService) FindPlatformByCodeAndType(req *model.GameStartReq) (*model.GamePlatform, error) {
-	gamePlatforms, err := s.FindAll(req.TenantCode)
+	gamePlatform, err := model.FindPlatformCacheByCodeAndType(s.db, req.PlatformCode, req.GameType, req.TenantCode)
 	if err != nil {
-		return nil, err
-	}
-	for _, gamePlatform := range gamePlatforms {
-		if gamePlatform.Code == req.PlatformCode && gamePlatform.GameType == req.GameType {
-			return gamePlatform, nil
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrGamePlatformNotFound
 		}
+		return nil, err
 	}
 
-	gamePlatform, err := model.FindPlatformByCodeAndType(s.db, req.PlatformCode, req.GameType, req.TenantCode)
-	if err != nil {
-		return nil, err
-	}
 	return gamePlatform, nil
 }
 
-// FindAll 查询当前租户下的全部游戏平台配置。
-func (s *GamePlatformService) FindAll(tenantCode string) ([]*model.GamePlatform, error) {
-	return model.FindPlatformAll(s.db, tenantCode)
+func (s *GamePlatformService) loadAvailablePlatform(req *model.GameStartReq) (*model.GamePlatform, error) {
+	gamePlatform, err := s.FindPlatformByCodeAndType(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if !gamePlatform.Enable {
+		return nil, ErrGamePlatformDisabled
+	}
+	if gamePlatform.Maintain {
+		return nil, ErrGamePlatformMaintaining
+	}
+
+	return gamePlatform, nil
+}
+
+func (s *GamePlatformService) loadAvailableElectronic(req *model.GameStartReq) (*model.GameElectronic, error) {
+	gameElectronic, err := model.FindElectronicById(s.db, req.TenantCode, req.GameId)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrGameElectronicNotFound
+		}
+		return nil, err
+	}
+
+	if !gameElectronic.Enable {
+		return nil, ErrGameElectronicDisabled
+	}
+	if gameElectronic.Maintain {
+		return nil, ErrGameElectronicMaintaining
+	}
+
+	return gameElectronic, nil
+}
+
+func (s *GamePlatformService) loadPlatformKey(tenantCode string, keyID int64) (*model.GamePlatformKey, error) {
+	gamePlatformKey, err := model.FindPlatformKeyCacheById(s.db, tenantCode, keyID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrGamePlatformKeyNotFound
+		}
+		return nil, err
+	}
+
+	return gamePlatformKey, nil
+}
+
+func (s *GamePlatformService) attachGameContext(
+	req *model.GameStartReq,
+	gamePlatform *model.GamePlatform,
+	gameElectronic *model.GameElectronic,
+	gamePlatformKey *model.GamePlatformKey,
+) {
+	req.Platform = gamePlatform
+	req.Electronic = gameElectronic
+	req.PlatformKey = gamePlatformKey
 }

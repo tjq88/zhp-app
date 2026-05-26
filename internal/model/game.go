@@ -4,13 +4,16 @@ package model
 type GameStartReq struct {
 	PlatformCode string `json:"platformCode" binding:"required"`
 	GameType     int8   `json:"gameType" binding:"required"`
-	GameId       string `json:"gameId"`
+	GameId       int64  `json:"gameId"`
 	Terminal     string `json:"terminal"`
 	GameCode     string `json:"gameCode"`
 	Username     string `json:"username"`
 	UserId       string `json:"userId"`
 	Ip           string `json:"ip"`
 	TenantCode   string `json:"tenantCode"`
+	Platform     *GamePlatform
+	PlatformKey  *GamePlatformKey
+	Electronic   *GameElectronic
 }
 
 // GameStartResp 描述开始游戏接口的响应体。

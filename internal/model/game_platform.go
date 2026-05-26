@@ -25,8 +25,12 @@ type GamePlatform struct {
 	ShowControls bool   `json:"show_controls"`
 	ShowTerminal bool   `json:"show_terminal"`
 	Detail       int    `json:"detail"`
-	KeyId        string `json:"key_id"`
+	KeyId        int64  `json:"key_id"`
 	Transfer     int    `json:"transfer"`
+}
+
+func (GamePlatform) TableName() string {
+	return "zp_game_platform"
 }
 
 // FindPlatformByCodeAndType 根据平台编码、游戏类型和租户查询平台配置。
@@ -69,10 +73,8 @@ func FindPlatformAll(db *gorm.DB, tenantCode string) ([]*GamePlatform, error) {
 		platforms = append(platforms, &platform)
 	}
 
-	if common.RedisClient != nil {
-		if payload, marshalErr := json.Marshal(platforms); marshalErr == nil {
-			_ = common.RedisClient.Set(context.Background(), redisKey, payload, 30*24*time.Hour).Err()
-		}
+	if payload, marshalErr := json.Marshal(platforms); marshalErr == nil {
+		common.RedisClient.Set(context.Background(), redisKey, payload, 30*24*time.Hour)
 	}
 
 	return platforms, nil

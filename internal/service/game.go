@@ -18,6 +18,12 @@ var (
 	ErrGamePlatformDisabled = errors.New("game platform disabled")
 	// ErrGamePlatformMaintaining 表示游戏平台处于维护中。
 	ErrGamePlatformMaintaining = errors.New("game platform maintaining")
+
+	ErrGameElectronicNotFound    = errors.New("game electronic not found")
+	ErrGameElectronicDisabled    = errors.New("game electronic disabled")
+	ErrGameElectronicMaintaining = errors.New("game electronic maintaining")
+
+	ErrGamePlatformKeyNotFound = errors.New("game platform key not found")
 )
 
 func NewGamePlatformService() *GamePlatformService {
@@ -28,7 +34,7 @@ func NewGamePlatformService() *GamePlatformService {
 
 // StartGame 执行开始游戏前的平台查找和状态校验。
 func (s *GamePlatformService) StartGame(req *model.GameStartReq) (*model.GameStartResp, error) {
-
+	//gamePlatform
 	gamePlatform, err := s.FindPlatformByCodeAndType(req)
 	if err != nil {
 		return nil, err
@@ -42,6 +48,32 @@ func (s *GamePlatformService) StartGame(req *model.GameStartReq) (*model.GameSta
 	if gamePlatform.Maintain {
 		return nil, ErrGamePlatformMaintaining
 	}
+
+	//electronic
+	gameElectronic, err := model.FindElectronicById(s.db, req.TenantCode, req.GameId)
+	if err != nil {
+		return nil, err
+	}
+	if gameElectronic == nil {
+		return nil, ErrGameElectronicNotFound
+	}
+	if gameElectronic.Enable {
+		return nil, ErrGameElectronicDisabled
+	}
+	if gameElectronic.Maintain {
+		return nil, ErrGameElectronicMaintaining
+	}
+	//
+	gamePlatformKey, err := model.FindPlatformKeyById(s.db, req.TenantCode, gamePlatform.KeyId)
+	if err != nil {
+		return nil, err
+	}
+	if gamePlatformKey == nil {
+		return nil, ErrGamePlatformNotFound
+	}
+	req.Electronic = gameElectronic
+	req.Platform = gamePlatform
+	req.PlatformKey = gamePlatformKey
 
 	resp := model.NewGameStartResp(gamePlatform, req)
 	return &resp, nil

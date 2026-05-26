@@ -69,7 +69,7 @@ func (s *GamePlatformService) StartGame(req *model.GameStartReq) (*model.GameSta
 		return nil, err
 	}
 	if gamePlatformKey == nil {
-		return nil, ErrGamePlatformNotFound
+		return nil, ErrGamePlatformKeyNotFound
 	}
 	req.Electronic = gameElectronic
 	req.Platform = gamePlatform
